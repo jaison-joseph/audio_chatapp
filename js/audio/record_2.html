@@ -1,0 +1,54 @@
+
+<button id="start">Start</button>
+<button id="stop">Stop</button>
+<ul id="recordings">
+</ul>
+
+<script>
+    const stopButton = document.getElementById('stop');
+    const startButton = document.getElementById('start');
+    let isRecording = false;
+
+    const handleSuccess = function(stream) {
+    const options = {mimeType: 'audio/webm'};
+    let recordedChunks = [];
+    const mediaRecorder = new MediaRecorder(stream, options);
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/dataavailable_event
+    mediaRecorder.addEventListener('dataavailable', function(e) {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    });
+
+    mediaRecorder.addEventListener('stop', function() {
+        
+        const player = document.createElement("audio");
+        player.id = "sound_player";
+        player.controls = 'controls';
+        player.src = URL.createObjectURL(new Blob(recordedChunks));
+        
+        var item = document.createElement("li");
+        item.appendChild(player);
+        
+        recordings.appendChild(item);
+
+        recordedChunks = [];
+    });
+
+    stopButton.addEventListener('click', function() {
+        if (isRecording) {
+            isRecording = false;
+            mediaRecorder.stop();
+        }
+    });
+
+    startButton.addEventListener('click', function() {
+        if (!isRecording) {
+            isRecording = true;
+            mediaRecorder.start();
+        }
+    });
+  };
+
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(handleSuccess);
+</script>
