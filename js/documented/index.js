@@ -19,13 +19,6 @@ io.on('connection', (socket) => {
 });
 
 io.on('connection', (socket) => {
-    socket.on('chat message', (msg) => {
-        socket.broadcast.emit('chat message', msg);
-        console.log('message: ' + msg);
-    });
-});
-
-io.on('connection', (socket) => {
     socket.on('audio message', (msg) => {
         socket.broadcast.emit('audio message', msg);
         console.log('got an audio message');
