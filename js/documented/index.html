@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Audio chat</title>
+    <style>
+      body { margin: 0; width: 100%; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #input { background: rgba(0, 0, 0, 0.15); margin: 0 auto; display: flex; justify-content: center; box-sizing: border-box; backdrop-filter: blur(10px); position: fixed; bottom: 0; width:100%; padding: 0.45rem; flex-grow: 1; border-radius: 2rem; margin: 0.45rem; }
+      /* #input:focus { outline: none; } */
+      #input > button { background: #333; border:none; padding: 0.3rem; margin: 0 1rem; border-radius: 0px; outline: none; border-radius: 2rem; color: #fff; }
+
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li:nth-child(odd) { background: #efefef; }
+    </style>
+  </head>
+  <body>
+    <ul id="messages"></ul>
+    <!-- <form id="form" action=""> -->
+      <!-- <input id="input" autocomplete="off" /> -->
+      <div id="input">
+        <button id="start">Start</button>
+        <button id="stop">Stop</button>
+      </div>
+    <!-- </form> -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- script to handle recording and emitting messages -->
+    <script>
+      const stopButton = document.getElementById('stop');
+      const startButton = document.getElementById('start');
+      var socket = io();
+      let isRecording = false;
+  
+      // function to call when the page gets mic access
+      const handleSuccess = function(stream) {
+        console.log("handle success triggered");
+        const options = {mimeType: 'audio/webm'};
+        // stores the audio chunks, later converted into a Blob once recording is stopped
+        let recordedChunks = [];
+        // the MediaRecorder object that handles recording audio
+        const mediaRecorder = new MediaRecorder(stream, options);
+
+        // https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/dataavailable_event
+        mediaRecorder.addEventListener('dataavailable', function(e) {
+          console.log("dataavailable triggered");
+          if (e.data.size > 0)
+            recordedChunks.push(e.data);
+        });
+
+        mediaRecorder.addEventListener('stop', function() {  
+          
+          console.log("media recorder stop triggered")
+          
+          // creating a blob from the recorded audio, for the player
+          const audioBlob = new Blob(recordedChunks);
+          // emitting the blob
+          socket.emit('audio message', recordedChunks);
+          // creating a player HTML element to play the recorded audio clip 
+          const player = document.createElement("audio");
+          // setting attributes of the clip
+          player.id = "sound_player";
+          player.controls = 'controls';
+          player.src = URL.createObjectURL(new Blob(recordedChunks));
+          // since we are done using the contents of recordedChunks
+          recordedChunks = [];
+
+          // creating a <li> element
+          var item = document.createElement('li');
+          // appending the previously created player element to the <li> element
+          item.appendChild(player);
+          // appending the <li> element to the <ul> with id messages
+          messages.appendChild(item);
+          // some scrolling thing to the latest thing
+          window.scrollTo(0, document.body.scrollHeight);
+        });
+
+        // binding the stop button on the webpage to the mediRecorder's stop method
+        stopButton.addEventListener('click', function() {
+          if (isRecording) {
+            isRecording = false;
+            mediaRecorder.stop();
+          }
+        });
+
+        // binding the start button on the webpage to the mediRecorder's start method
+        startButton.addEventListener('click', function() {
+          if (!isRecording) {
+            isRecording = true;
+            mediaRecorder.start();
+          }
+        });
+      };
+
+      // what to do when a new 'audio message' is received
+      socket.on('audio message', function(msg) {
+        console.log("got audio message");
+        // creating a player HTML element to play the recorded audio clip 
+        const player = document.createElement("audio");
+        // setting attributes of the clip
+        player.id = "sound_player";
+        player.controls = 'controls';
+        player.src = URL.createObjectURL(new Blob(msg));
+        // creating a <li> element
+        var item = document.createElement('li');
+        // appending the previously created player element to the <li> element
+        item.appendChild(player);
+        // appending the <li> element to the <ul> with id messages
+        messages.appendChild(item);
+        // some scrolling thing to the latest thing
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+  
+      // attempt to get mic permission, call handleSuccess if successful else alert
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(handleSuccess)
+        .catch((err) => {
+          alert("Mic access is required for the application to work.");
+        });
+  </script>
+  </body>
+</html>
