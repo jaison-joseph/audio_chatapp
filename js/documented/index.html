@@ -17,36 +17,130 @@
   </head>
   <body>
     <ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
+    <!-- <form id="form" action=""> -->
+      <!-- <input id="input" autocomplete="off" /> -->
+      <button id="start">Start</button>
+      <button id="stop">Stop</button>
+    <!-- </form> -->
     <script src="/socket.io/socket.io.js"></script>
+    <!-- script to handle recording and emitting messages -->
     <script>
-        var socket = io();
-        var form = document.getElementById('form');
-        var input = document.getElementById('input');
+      const stopButton = document.getElementById('stop');
+      const startButton = document.getElementById('start');
+      let isRecording = false;
+  
+      const handleSuccess = function(stream) {
+        console.log("handle success triggered");
+        const options = {mimeType: 'audio/webm'};
+        // stores the audio chunks, later converted into a Blob once recording is stopped
+        let recordedChunks = [];
+        // the MediaRecorder object that handles recording audio
+        const mediaRecorder = new MediaRecorder(stream, options);
 
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (input.value) {
-                socket.emit('chat message', input.value);
-
-                // we will have the server only broadcast the message -> client won't get it
-                // so we just add the message to the HTML 
-                var item = document.createElement('li');
-                item.textContent = input.value;
-                messages.appendChild(item);
-                window.scrollTo(0, document.body.scrollHeight);
-                input.value = '';
-            }
+        // https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/dataavailable_event
+        mediaRecorder.addEventListener('dataavailable', function(e) {
+          console.log("dataavailable triggered");
+          if (e.data.size > 0)
+            recordedChunks.push(e.data);
         });
 
-        socket.on('chat message', function(msg) {
-            var item = document.createElement('li');
-            item.textContent = msg;
-            messages.appendChild(item);
-            window.scrollTo(0, document.body.scrollHeight);
+        mediaRecorder.addEventListener('stop', function() {  
+          
+          console.log("media recorder stop triggered")
+          
+          // to emit the audio blob
+          var socket = io();
+          // creating a blob from the recorded audio, for the player
+          const audioBlob = new Blob(recordedChunks);
+          // emitting the blob
+          socket.emit('audio message', recordedChunks);
+          // creating a player HTML element to play the recorded audio clip 
+          const player = document.createElement("audio");
+          // setting attributes of the clip
+          player.id = "sound_player";
+          player.controls = 'controls';
+          player.src = URL.createObjectURL(new Blob(recordedChunks));
+          // since we are done using the contents of recordedChunks
+          recordedChunks = [];
+
+          // creating a <li> element
+          var item = document.createElement('li');
+          // appending the previously created player element to the <li> element
+          item.appendChild(player);
+          // appending the <li> element to the <ul> with id messages
+          messages.appendChild(item);
+          // some scrolling thing to the latest thing
+          window.scrollTo(0, document.body.scrollHeight);
         });
-    </script>
+
+        // binding the stop button on the webpage to the mediRecorder's stop method
+        stopButton.addEventListener('click', function() {
+          if (isRecording) {
+            isRecording = false;
+            mediaRecorder.stop();
+          }
+        });
+
+        // binding the start button on the webpage to the mediRecorder's start method
+        startButton.addEventListener('click', function() {
+          if (!isRecording) {
+            isRecording = true;
+            mediaRecorder.start();
+          }
+        });
+      };
+  
+      // attempt to get mic permission, call handleSuccess if successful else alert
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+          .then(handleSuccess)
+          .catch((err) => {
+              alert("Mic access is required for the application to work.");
+          });
+  </script>
+  <!-- script to handle new incoming messages -->
+  <script>
+      var socket = io();
+      // var form = document.getElementById('form');
+      // var input = document.getElementById('input');
+
+      // form.addEventListener('submit', function(e) {
+      //     e.preventDefault();
+      //     if (input.value) {
+      //         socket.emit('chat message', input.value);
+
+      //         // we will have the server only broadcast the message -> client won't get it
+      //         // so we just add the message to the HTML 
+      //         var item = document.createElement('li');
+      //         item.textContent = input.value;
+      //         messages.appendChild(item);
+      //         window.scrollTo(0, document.body.scrollHeight);
+      //         input.value = '';
+      //     }
+      // });
+
+      socket.on('chat message', function(msg) {
+          var item = document.createElement('li');
+          item.textContent = msg;
+          messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+      });
+      socket.on('audio message', function(msg) {
+        console.log("got audio message");
+        // creating a player HTML element to play the recorded audio clip 
+        const player = document.createElement("audio");
+        // setting attributes of the clip
+        player.id = "sound_player";
+        player.controls = 'controls';
+        player.src = URL.createObjectURL(new Blob(msg));
+        // creating a <li> element
+        var item = document.createElement('li');
+        // appending the previously created player element to the <li> element
+        item.appendChild(player);
+        // appending the <li> element to the <ul> with id messages
+        messages.appendChild(item);
+        // some scrolling thing to the latest thing
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+  </script>
   </body>
 </html>

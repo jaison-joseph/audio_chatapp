@@ -25,6 +25,13 @@ io.on('connection', (socket) => {
     });
 });
 
+io.on('connection', (socket) => {
+    socket.on('audio message', (msg) => {
+        socket.broadcast.emit('audio message', msg);
+        console.log('got an audio message');
+    });
+});
+
 server.listen(3000, () => {
   console.log('listening on *:3000');
 });

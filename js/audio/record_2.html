@@ -10,45 +10,50 @@
     let isRecording = false;
 
     const handleSuccess = function(stream) {
-    const options = {mimeType: 'audio/webm'};
-    let recordedChunks = [];
-    const mediaRecorder = new MediaRecorder(stream, options);
+        console.log("handle success triggered");
+        const options = {mimeType: 'audio/webm'};
+        let recordedChunks = [];
+        const mediaRecorder = new MediaRecorder(stream, options);
 
-    // https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/dataavailable_event
-    mediaRecorder.addEventListener('dataavailable', function(e) {
-      if (e.data.size > 0) recordedChunks.push(e.data);
-    });
+        // https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/dataavailable_event
+        mediaRecorder.addEventListener('dataavailable', function(e) {
+            console.log("dataavailable triggered");
+        if (e.data.size > 0) recordedChunks.push(e.data);
+        });
 
-    mediaRecorder.addEventListener('stop', function() {
-        
-        const player = document.createElement("audio");
-        player.id = "sound_player";
-        player.controls = 'controls';
-        player.src = URL.createObjectURL(new Blob(recordedChunks));
-        
-        var item = document.createElement("li");
-        item.appendChild(player);
-        
-        recordings.appendChild(item);
+        mediaRecorder.addEventListener('stop', function() {
+            
+            const player = document.createElement("audio");
+            player.id = "sound_player";
+            player.controls = 'controls';
+            player.src = URL.createObjectURL(new Blob(recordedChunks));
+            
+            var item = document.createElement("li");
+            item.appendChild(player);
+            
+            recordings.appendChild(item);
 
-        recordedChunks = [];
-    });
+            recordedChunks = [];
+        });
 
-    stopButton.addEventListener('click', function() {
-        if (isRecording) {
-            isRecording = false;
-            mediaRecorder.stop();
-        }
-    });
+        stopButton.addEventListener('click', function() {
+            if (isRecording) {
+                isRecording = false;
+                mediaRecorder.stop();
+            }
+        });
 
-    startButton.addEventListener('click', function() {
-        if (!isRecording) {
-            isRecording = true;
-            mediaRecorder.start();
-        }
-    });
-  };
+        startButton.addEventListener('click', function() {
+            if (!isRecording) {
+                isRecording = true;
+                mediaRecorder.start();
+            }
+        });
+    };
 
-  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      .then(handleSuccess);
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(handleSuccess)
+        .catch((err) => {
+            alert("Mic access is required for the application to work.");
+        });
 </script>
