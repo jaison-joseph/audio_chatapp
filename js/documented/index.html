@@ -27,8 +27,10 @@
     <script>
       const stopButton = document.getElementById('stop');
       const startButton = document.getElementById('start');
+      var socket = io();
       let isRecording = false;
   
+      // function to call when the page gets mic access
       const handleSuccess = function(stream) {
         console.log("handle success triggered");
         const options = {mimeType: 'audio/webm'};
@@ -48,8 +50,6 @@
           
           console.log("media recorder stop triggered")
           
-          // to emit the audio blob
-          var socket = io();
           // creating a blob from the recorded audio, for the player
           const audioBlob = new Blob(recordedChunks);
           // emitting the blob
@@ -89,41 +89,8 @@
           }
         });
       };
-  
-      // attempt to get mic permission, call handleSuccess if successful else alert
-      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-          .then(handleSuccess)
-          .catch((err) => {
-              alert("Mic access is required for the application to work.");
-          });
-  </script>
-  <!-- script to handle new incoming messages -->
-  <script>
-      var socket = io();
-      // var form = document.getElementById('form');
-      // var input = document.getElementById('input');
 
-      // form.addEventListener('submit', function(e) {
-      //     e.preventDefault();
-      //     if (input.value) {
-      //         socket.emit('chat message', input.value);
-
-      //         // we will have the server only broadcast the message -> client won't get it
-      //         // so we just add the message to the HTML 
-      //         var item = document.createElement('li');
-      //         item.textContent = input.value;
-      //         messages.appendChild(item);
-      //         window.scrollTo(0, document.body.scrollHeight);
-      //         input.value = '';
-      //     }
-      // });
-
-      socket.on('chat message', function(msg) {
-          var item = document.createElement('li');
-          item.textContent = msg;
-          messages.appendChild(item);
-          window.scrollTo(0, document.body.scrollHeight);
-      });
+      // what to do when a new 'audio message' is received
       socket.on('audio message', function(msg) {
         console.log("got audio message");
         // creating a player HTML element to play the recorded audio clip 
@@ -141,6 +108,13 @@
         // some scrolling thing to the latest thing
         window.scrollTo(0, document.body.scrollHeight);
       });
+  
+      // attempt to get mic permission, call handleSuccess if successful else alert
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(handleSuccess)
+        .catch((err) => {
+          alert("Mic access is required for the application to work.");
+        });
   </script>
   </body>
 </html>
