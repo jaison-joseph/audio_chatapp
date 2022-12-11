@@ -1,14 +1,16 @@
 const express = require('express');
 const app = express();
+// expose the public/ directory, which contains the front-end html & css
+app.use(express.static('public'))
 const http = require('http');
 const server = http.createServer(app);
-const {Server} = require("socket.io");
+const { Server } = require("socket.io");
 // socket io mounts on top of node's http server?
 const io = new Server(server);
 
 app.get('/', (req, res) => {
     // console.log("got a request");
-    res.sendFile(__dirname + "/index.html");
+    res.sendFile(__dirname + "/public/index.html");
 });
 
 io.on('connection', (socket) => {
@@ -26,5 +28,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(3000, () => {
-  console.log('listening on *:3000');
+    console.log('listening on *:3000');
 });
