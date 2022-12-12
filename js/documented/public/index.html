@@ -83,7 +83,12 @@
           // creating a blob from the recorded audio, for the player
           const audioBlob = new Blob(recordedChunks);
           // emitting the blob
-          socket.emit('audio message', recordedChunks);
+          socket.emit('audio message', 
+              {
+                  "audio": recordedChunks,
+                  "sender": sessionStorage.getItem("username")
+              }
+          );
           // creating a player HTML element to play the recorded audio clip 
           const player = document.createElement("audio");
           // setting attributes of the clip
@@ -93,8 +98,12 @@
           // since we are done using the contents of recordedChunks
           recordedChunks = [];
 
+            var label = document.createElement('span');
+            label.innerHTML = sessionStorage.getItem("username");
+
           // creating a <li> element
           var item = document.createElement('li');
+            item.appendChild(label);
           // appending the previously created player element to the <li> element
           item.appendChild(player);
           // appending the <li> element to the <ul> with id messages
@@ -128,9 +137,12 @@
         // setting attributes of the clip
         player.id = "sound_player";
         player.controls = 'controls';
-        player.src = URL.createObjectURL(new Blob(msg));
+        player.src = URL.createObjectURL(new Blob(msg["audio"]));
         // creating a <li> element
         var item = document.createElement('li');
+        var label = document.createElement('span');
+        label.innerHTML = msg["sender"];
+        item.appendChild(label);
         // appending the previously created player element to the <li> element
         item.appendChild(player);
         // appending the <li> element to the <ul> with id messages
