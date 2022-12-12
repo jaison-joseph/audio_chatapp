@@ -1,36 +1,22 @@
 const express = require('express');
-// var session = require('express-session');
 const app = express();
 // expose the public/ directory, which contains the front-end html & css
 app.use(express.static(__dirname + '/public'));
-// app.use(session({secret: 'shh'}));
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 // socket io mounts on top of node's http server?
 const io = new Server(server);
-// var sess;
 
 const db_ = require("@replit/database");
 const db = new db_();
 
 app.get('/', (req, res) => {
-    // sess = req.session;
-    // console.log("got a request");
-    // sess.id = req.sessionID;
     res.sendFile(__dirname + "/public/name.html");
 });
 
-// app.get('/public/style.css', (req, res) => {
-//     // sess = req.session;
-//     // console.log("got a request");
-//     // sess.id = req.sessionID;
-//     res.sendFile(__dirname + "/public/style.css");
-// });
-
+// for debugging; a call to this route will list the keys and values on the store on the server
 app.get('/values', (req, res) => {
-    console.log(db);
-    // console.log("URL: ", process.env.REPLIT_DB_URL);
     db.list().then(keys => {
         keys.forEach((k) => {
             db.get(k).then(v => {
@@ -40,8 +26,8 @@ app.get('/values', (req, res) => {
     });
 });
 
+// for debugging: a call to this route will clear all key:value pairs
 app.get('/deleteKeys', (req, res) => {
-    // console.log("URL: ", process.env.REPLIT_DB_URL);
     db.list().then(keys => {
         keys.forEach((k) => {
             console.log("deleting key: ", k);
@@ -51,49 +37,31 @@ app.get('/deleteKeys', (req, res) => {
     });
 });
 
-app.get('/global', (req, res) => {
-    // sess = req.session;
-    // console.log("got a request");
-    // sess.id = req.sessionID;
-    res.sendFile(__dirname + "/public/index.html");
-});
-
+// serve the public/index.html page on the /chat route
 app.get('/chat', (req, res) => {
-    // sess = req.session;
-    // console.log("got a request");
-    // sess.id = req.sessionID;
-    
-    // const username = req.query.username;
-    // db.get(username).then(response => {
-    //     // if the username wasn't found, redirect to home
-    //     if (response == null) {
-    //         res.redirect('start');
-    //     }
-    //     else {
-    //         const socketId = req.query.socketId;
-    //         db.set(username, socketId);
-    //         res.sendFile(__dirname + "/public/index.html");
-    //     }
-    // });
     res.sendFile(__dirname + "/public/index.html");
 });
 
+// serve the public/name.html page on the /start route, this is the route where the user is supposed to start
 app.get('/start', (req, res) => {
-    // console.log("got a request");
     res.sendFile(__dirname + "/public/name.html");
 });
 
+// for debugging, console logs the username of ever disconnecting socket
 io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('user disconnected: ', socket.id);
     });
 });
 
+// allows the quit button to 'give up' the name of the current user's socket
 io.on('connection', (socket) => {
     socket.on('quit', () => {
+        // flag to stop iterations once the value is found
         let gotEntry = false;
         db.list().then(keys => {
             keys.forEach((k) => {
+                // will only check if the value still isn't found
                 if (!gotEntry) {
                     db.get(k).then(v => {
                         if (v ==  socket.id) {
@@ -105,31 +73,15 @@ io.on('connection', (socket) => {
                 }
             });
         });
-        // console.log('username removed: ', socket.id);
     });
 });
 
+// for debugging; console log on every new socket connection
 io.on('connection', (socket) => {
     console.log("A user connected: ", socket.id);
 });
 
-io.on('connection', (socket) => {
-    socket.on('go to chat', (msg) => {
-        const username = msg["username"];
-        const socketId = msg["socketId"];
-        db.get(username).then(response => {
-            // if the username wasn't found, redirect to home
-            if (response == null || response != socketId) {
-                socket.emit('alert', 'Something went wrong. Please try again!');
-            }
-            else {
-                socket.emit('redirect', '/chat');
-                // res.sendFile(__dirname + "/public/index.html");
-            }
-        });
-    });
-});
-
+// upon receiving an audio message, emit the same to everyone except the sender
 io.on('connection', (socket) => {
     socket.on('audio message', (msg) => {
         socket.broadcast.emit('audio message', msg);
@@ -137,6 +89,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// checks to see if the key value store has an entry with the key passed along with the event
 io.on('connection', (socket) => {
     socket.on('checkUniqueName', async function(msg) {
         console.log('got an name check request for: ', msg);
@@ -164,6 +117,9 @@ io.on('connection', (socket) => {
     });
 });
 
+// used every time the chat page loads, checks the kv store for a username:socketId
+// entry, if found, the value is updated with the sender's socketId. 
+// a 'updateSocketIdResponse' event is emitted with the result of the event
 io.on('connection', (socket) => {
     socket.on('updateSocketId', async function(clientInfo) {
         const username = clientInfo["username"];
@@ -183,6 +139,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// start server
 server.listen(3000, () => {
     console.log('listening on *:3000');
 });

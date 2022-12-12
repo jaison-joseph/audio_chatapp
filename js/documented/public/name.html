@@ -7,10 +7,10 @@
     </head>
     <body>
         <div class="form-container">
+            <!-- form with a field to enter username and a subit button -->
             <form id="nameForm" name="nameForm">
                  <h1 class="form-title">Enter your username: </h1>
                 <input type="text" class="form-input" placeholder="Username" id="name" maxlength="20"/>
-<!--                 <br><br> -->
                 <button type="submit" class="form-button" value="Go!">Go!</button>
             </form>
         </div>
@@ -25,6 +25,8 @@
             event.preventDefault();
             const name = document.getElementById("name").value;
             console.log("name: ", name);
+            // the checkUniqueName event will return a checkUniqueNameResponse event 
+            // the returned event's response will vary on whether the username is already in use by an online user
             socket.emit('checkUniqueName', name);
             socket.once("checkUniqueNameResponse", (msg) => {
                 console.log("entering checkNameResponse callback: ", msg);
@@ -32,6 +34,10 @@
                     console.log("that username is already taken, please try another one");
                     alert("that username is already taken, please try another one");
                 }
+                /** 
+                If the username wasn't found, the username and socketId are written to the localStorage
+                The user is then redirected to the /chat route
+                */
                 else {
                     console.log("ouu nice");
                     sessionStorage.setItem("username", name);
@@ -40,8 +46,6 @@
                     window.location.href = "/chat";
                 }
             });
-            console.log("end of submit button callback");
-            // consolee.log("socketId: ", socket.io.engine.id);
         });
     </script>
 </html>

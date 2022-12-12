@@ -1,26 +1,27 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Audio chat</title>
-    <link rel="stylesheet" type='text/css' href="index_style.css">
-  </head>
-  <body>
-    <ul id="messages"></ul>
-    <!-- <form id="form" action=""> -->
-      <!-- <input id="input" autocomplete="off" /> -->
-      <div id="input">
-        <button id="start">Start</button>
-        <button id="stop">Stop</button>
-        <button id="quit">Quit</button>
-      </div>
+    <head>
+        <title>Audio chat</title>
+        <link rel="stylesheet" type='text/css' href="index_style.css">
+    </head>
+    <body>    
+        <!-- The list will store the voice messages that are dynamically added by the javascript -->
+        <ul id="messages"></ul>
+        <div id="input">
+            <button id="start">Start</button>
+            <button id="stop">Stop</button>
+            <button id="quit">Quit</button>
+        </div>
   </body>
-    <!-- </form> -->
     <script src="/socket.io/socket.io.js"></script>
-        <!-- verify that user isn't aliasing with someone else's username -->
+    <!-- verify that user isn't aliasing with someone else's username -->
     <script>
+        // just for debugging
         console.log("local username: ", sessionStorage.getItem("username"));
         console.log("local socketId: ", sessionStorage.getItem("socketId"));
+        // creates a socket that is connected to the server
         var socket = io();
+        // if either the local username or socket id is null, the user has either improperly accessed this webpage, or they modified the local storage values
         if (
             sessionStorage.getItem("username") == null
             ||
@@ -29,6 +30,20 @@
             console.log("one of the local vars is null");
             window.location.href = "/start";
         }
+        /** we emit an event to the server that wil verify the username and socketId pair, and update it
+        with the new one. The user is expected to start at the /start route, where the username:socketId
+        pair is set. 
+        Then, upon successful username creation, the user is redirected to this page.
+        This causes a new socket connection to be established. But now the username:socketId is only on
+        a single machine. This serves as a starting point to ensure that usernames are not used to alias
+        as another user. 
+        The updateSocketId updates the socketId of the existing username:socketId pair to the new 'current' 
+        socketId. If not successful, it implies we have someone trying to alias as another exsiting user
+        If successful, the localStorage socketId is also updated. 
+        Since the localStorage is persistent through page refreshes, the username is also persistent through
+        the same. However, the localStorage isn't persistent through tab closes. So the user is expected
+        to hit the 'quit' button before closing the tab
+        */
         socket.emit(
             "updateSocketId",
             {
@@ -37,132 +52,135 @@
             }
         );
         socket.once("updateSocketIdResponse", (msg) => {
+            // if not successful, redirect to home page
             if (msg != "success") {
-                // alert("could not update socketId");
                 window.location.href = "/start";
             }
+            // if the update was successful, the username is also verified & the local socketId is updated
             else {
                 console.log("username verified");
-                sessionStorage.setItem("socketId", socket["id"]);
                 console.log("socketId: ", socket["id"]);
+                sessionStorage.setItem("socketId", socket["id"]);
             }
         });
+        // getElement's to bind actions
         const stopButton = document.getElementById('stop');
         const startButton = document.getElementById('start');
         const quitButton = document.getElementById('quit');
+
+        // used to control recorder
         let isRecording = false;
   
         // function to call when the page gets mic access
         const handleSuccess = function(stream) {
             console.log("handle success triggered");
-            // console.log(socket);
-            // console.log(socket["id"]);
-            // console.log(sessionStorage.getItem("username"));
-            // console.log(REPLIT_DB_URL);
-            // const k = sessionStorage.getItem("username");
-            // db.get(k).then(v => {
-            //       console.log(k + ": " + v);
-            // });
-            // console.log(socket["id"]);
           
-        const options = {mimeType: 'audio/webm'};
-        // stores the audio chunks, later converted into a Blob once recording is stopped
-        let recordedChunks = [];
-        // the MediaRecorder object that handles recording audio
-        const mediaRecorder = new MediaRecorder(stream, options);
+            const options = {mimeType: 'audio/webm'};
+            // stores the audio chunks, later converted into a Blob once recording is stopped
+            let recordedChunks = [];
+            // the MediaRecorder object that handles recording audio
+            const mediaRecorder = new MediaRecorder(stream, options);
+    
+            // https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/dataavailable_event
+            mediaRecorder.addEventListener('dataavailable', function(e) {
+                console.log("dataavailable triggered");
+                if (e.data.size > 0)
+                    recordedChunks.push(e.data);
+            });
+    
+            mediaRecorder.addEventListener('stop', function() {  
+          
+                console.log("media recorder stop triggered")
+          
+                // creating a blob from the recorded audio, for the player
+                const audioBlob = new Blob(recordedChunks);
+                // emitting the blob
+                socket.emit('audio message', 
+                  {
+                      "audio": recordedChunks,
+                      "sender": sessionStorage.getItem("username")
+                  }
+                );
+                // creating a player HTML element to play the recorded audio clip 
+                const player = document.createElement("audio");
+                // setting attributes of the clip
+                player.id = "sound_player";
+                player.controls = 'controls';
+                player.src = URL.createObjectURL(new Blob(recordedChunks));
+                // since we are done using the contents of recordedChunks
+                recordedChunks = [];
+                
+                // the label will store the name of the person who send 'this' clip
+                var label = document.createElement('span');
+                label.innerHTML = sessionStorage.getItem("username");
+                
+                // creating a <li> element
+                var item = document.createElement('li');
+                item.appendChild(label);
+                // appending the previously created player element to the <li> element
+                item.appendChild(player);
+                // appending the <li> element to the <ul> with id messages
+                messages.appendChild(item);
+                // some scrolling thing to the latest thing
+                window.scrollTo(0, document.body.scrollHeight);
+            });
 
-        // https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/dataavailable_event
-        mediaRecorder.addEventListener('dataavailable', function(e) {
-          console.log("dataavailable triggered");
-          if (e.data.size > 0)
-            recordedChunks.push(e.data);
-        });
-
-        mediaRecorder.addEventListener('stop', function() {  
-          
-          console.log("media recorder stop triggered")
-          
-          // creating a blob from the recorded audio, for the player
-          const audioBlob = new Blob(recordedChunks);
-          // emitting the blob
-          socket.emit('audio message', 
-              {
-                  "audio": recordedChunks,
-                  "sender": sessionStorage.getItem("username")
+            // binding the stop button on the webpage to the mediRecorder's stop method
+            stopButton.addEventListener('click', function() {
+              if (isRecording) {
+                isRecording = false;
+                mediaRecorder.stop();
               }
-          );
-          // creating a player HTML element to play the recorded audio clip 
-          const player = document.createElement("audio");
-          // setting attributes of the clip
-          player.id = "sound_player";
-          player.controls = 'controls';
-          player.src = URL.createObjectURL(new Blob(recordedChunks));
-          // since we are done using the contents of recordedChunks
-          recordedChunks = [];
+            });
 
+            // binding the start button on the webpage to the mediRecorder's start method
+            startButton.addEventListener('click', function() {
+              if (!isRecording) {
+                isRecording = true;
+                mediaRecorder.start();
+              }
+            });
+
+            /** the quit button does two things
+            1. let the server know that it is quitting so that the username associaed with this socket 
+            can be reused
+             2. redirect the user on this socket to the home page 
+             */
+            quitButton.addEventListener('click', function() {
+                socket.emit("quit", sessionStorage.getItem("username"));
+                window.location.href = "/start";
+            });
+        };
+
+        // what to do when a new 'audio message' is received
+        socket.on('audio message', function(msg) {
+            console.log("got audio message");
+            // creating a player HTML element to play the recorded audio clip 
+            const player = document.createElement("audio");
+            // the span will hold the username of the sender
             var label = document.createElement('span');
-            label.innerHTML = sessionStorage.getItem("username");
-
-          // creating a <li> element
-          var item = document.createElement('li');
+              
+            // setting attributes of the clip
+            player.id = "sound_player";
+            player.controls = 'controls';
+            player.src = URL.createObjectURL(new Blob(msg["audio"]));
+            // creating a <li> element. which will contain the voice message and username
+            var item = document.createElement('li');
+            label.innerHTML = msg["sender"];
             item.appendChild(label);
-          // appending the previously created player element to the <li> element
-          item.appendChild(player);
-          // appending the <li> element to the <ul> with id messages
-          messages.appendChild(item);
-          // some scrolling thing to the latest thing
-          window.scrollTo(0, document.body.scrollHeight);
+            // appending the previously created player element to the <li> element
+            item.appendChild(player);
+            // appending the <li> element to the <ul> with id messages
+            messages.appendChild(item);
+            // some scrolling thing to the latest thing
+            window.scrollTo(0, document.body.scrollHeight);
         });
-
-        // binding the stop button on the webpage to the mediRecorder's stop method
-        stopButton.addEventListener('click', function() {
-          if (isRecording) {
-            isRecording = false;
-            mediaRecorder.stop();
-          }
-        });
-
-        // binding the start button on the webpage to the mediRecorder's start method
-        startButton.addEventListener('click', function() {
-          if (!isRecording) {
-            isRecording = true;
-            mediaRecorder.start();
-          }
-        });
-
-        quitButton.addEventListener('click', function() {
-            socket.emit("quit", sessionStorage.getItem("username"));
-            window.location.href = "/start";
-        });
-      };
-
-      // what to do when a new 'audio message' is received
-      socket.on('audio message', function(msg) {
-        console.log("got audio message");
-        // creating a player HTML element to play the recorded audio clip 
-        const player = document.createElement("audio");
-        // setting attributes of the clip
-        player.id = "sound_player";
-        player.controls = 'controls';
-        player.src = URL.createObjectURL(new Blob(msg["audio"]));
-        // creating a <li> element
-        var item = document.createElement('li');
-        var label = document.createElement('span');
-        label.innerHTML = msg["sender"];
-        item.appendChild(label);
-        // appending the previously created player element to the <li> element
-        item.appendChild(player);
-        // appending the <li> element to the <ul> with id messages
-        messages.appendChild(item);
-        // some scrolling thing to the latest thing
-        window.scrollTo(0, document.body.scrollHeight);
-      });
   
-      // attempt to get mic permission, call handleSuccess if successful else alert
-      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        // attempt to get mic permission, call handleSuccess if successful else alert
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
         .then(handleSuccess)
         .catch((err) => {
-          alert("Mic access is required for the application to work.");
+            alert("Mic access is required for the application to work.");
         });
   </script>
 </html>
