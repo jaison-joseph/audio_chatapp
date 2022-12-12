@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <title>Audio Chatroom</title>
         <script src="/socket.io/socket.io.js"></script>
-<!--         <script type="text/javascript" src="../name.js"></script> -->
+        <link rel="stylesheet" type='text/css' href="name_style.css">  
     </head>
     <body>
-    <form id="nameForm" name="nameForm">
-        <input type="text" id="name">
-        <br><br>
-        <input type="submit" value="Go!"/>
-    </form>
+        <div class="form-container">
+            <form id="nameForm" name="nameForm">
+                 <h1 class="form-title">Enter your username: </h1>
+                <input type="text" class="form-input" placeholder="Username" id="name" maxlength="20"/>
+<!--                 <br><br> -->
+                <button type="submit" class="form-button" value="Go!">Go!</button>
+            </form>
+        </div>
     </body>
     <script>
         var socket = io();
