@@ -90,7 +90,7 @@ io.on('connection', (socket) => {
 });
 
 io.on('connection', (socket) => {
-    socket.on('removeUsername', () => {
+    socket.on('quit', () => {
         let gotEntry = false;
         db.list().then(keys => {
             keys.forEach((k) => {

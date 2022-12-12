@@ -11,6 +11,7 @@
       <div id="input">
         <button id="start">Start</button>
         <button id="stop">Stop</button>
+        <button id="quit">Quit</button>
       </div>
   </body>
     <!-- </form> -->
@@ -48,6 +49,7 @@
         });
         const stopButton = document.getElementById('stop');
         const startButton = document.getElementById('start');
+        const quitButton = document.getElementById('quit');
         let isRecording = false;
   
         // function to call when the page gets mic access
@@ -126,6 +128,11 @@
             isRecording = true;
             mediaRecorder.start();
           }
+        });
+
+        quitButton.addEventListener('click', function() {
+            socket.emit("quit", sessionStorage.getItem("username"));
+            window.location.href = "/start";
         });
       };
 
