@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="/socket.io/socket.io.js"></script>
+<!--         <script type="text/javascript" src="../name.js"></script> -->
+    </head>
+    <body>
+    <form id="nameForm" name="nameForm">
+        <input type="text" id="name">
+        <br><br>
+        <input type="submit" value="Go!"/>
+    </form>
+    </body>
+    <script>
+        var socket = io();
+
+        const form = document.getElementById("nameForm");
+        // var socket = io('localhost');  
+    
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const name = document.getElementById("name").value;
+            console.log("name: ", name);
+            socket.emit('checkUniqueName', name);
+            socket.once("checkUniqueNameResponse", (msg) => {
+                console.log("entering checkNameResponse callback: ", msg);
+                if (msg == "exists") {
+                    console.log("that username is already taken, please try another one");
+                    alert("that username is already taken, please try another one");
+                }
+                else {
+                    console.log("ouu nice");
+                    sessionStorage.setItem("username", name);
+                    sessionStorage.setItem("socketId", socket["id"]);
+                    // alert("name found");
+                    window.location.href = "/chat";
+                }
+            });
+            console.log("end of submit button callback");
+            // consolee.log("socketId: ", socket.io.engine.id);
+        });
+    </script>
+</html>

@@ -2,7 +2,7 @@
 <html>
   <head>
     <title>Audio chat</title>
-    <link rel="stylesheet" type='text/css' href="/style.css">
+    <link rel="stylesheet" type='text/css' href="style.css">
   </head>
   <body>
     <ul id="messages"></ul>
@@ -12,18 +12,57 @@
         <button id="start">Start</button>
         <button id="stop">Stop</button>
       </div>
+  </body>
     <!-- </form> -->
     <script src="/socket.io/socket.io.js"></script>
-    <!-- script to handle recording and emitting messages -->
+        <!-- verify that user isn't aliasing with someone else's username -->
     <script>
-      const stopButton = document.getElementById('stop');
-      const startButton = document.getElementById('start');
-      var socket = io();
-      let isRecording = false;
+        console.log("local username: ", sessionStorage.getItem("username"));
+        console.log("local socketId: ", sessionStorage.getItem("socketId"));
+        var socket = io();
+        if (
+            sessionStorage.getItem("username") == null
+            ||
+            sessionStorage.getItem("socketId") == null
+        ) {
+            console.log("one of the local vars is null");
+            window.location.href = "/start";
+        }
+        socket.emit(
+            "updateSocketId",
+            {
+                "username": sessionStorage.getItem("username"),
+                "socketId": sessionStorage.getItem("socketId")
+            }
+        );
+        socket.once("updateSocketIdResponse", (msg) => {
+            if (msg != "success") {
+                // alert("could not update socketId");
+                window.location.href = "/start";
+            }
+            else {
+                console.log("username verified");
+                sessionStorage.setItem("socketId", socket["id"]);
+                console.log("socketId: ", socket["id"]);
+            }
+        });
+        const stopButton = document.getElementById('stop');
+        const startButton = document.getElementById('start');
+        let isRecording = false;
   
-      // function to call when the page gets mic access
-      const handleSuccess = function(stream) {
-        console.log("handle success triggered");
+        // function to call when the page gets mic access
+        const handleSuccess = function(stream) {
+            console.log("handle success triggered");
+            // console.log(socket);
+            // console.log(socket["id"]);
+            // console.log(sessionStorage.getItem("username"));
+            // console.log(REPLIT_DB_URL);
+            // const k = sessionStorage.getItem("username");
+            // db.get(k).then(v => {
+            //       console.log(k + ": " + v);
+            // });
+            // console.log(socket["id"]);
+          
         const options = {mimeType: 'audio/webm'};
         // stores the audio chunks, later converted into a Blob once recording is stopped
         let recordedChunks = [];
@@ -107,5 +146,4 @@
           alert("Mic access is required for the application to work.");
         });
   </script>
-  </body>
 </html>
